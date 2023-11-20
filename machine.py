@@ -1,4 +1,5 @@
 import random
+import math
 from itertools import combinations
 from shapely.geometry import LineString, Point
 
@@ -24,10 +25,58 @@ class MACHINE():
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
 
-    def find_best_selection(self):
-        available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
-        return random.choice(available)
+    def valid_move(self):
+        return [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
+
+    def heuristic_function(self):
+        score = random.randrange(1,100)
+        return score
     
+    def min_max(self, depth, alpha, beta, maximizing_value):
+        if depth == 0 or not self.valid_move():
+            return self.heuristic_function()
+        
+        if maximizing_value: # Maximizing turn (my turn)
+            best_value = -math.inf
+            for move in self.valid_move():
+                self.drawn_lines.append(move) # 임시로 그어봄
+                value = self.min_max(depth-1,alpha,beta,False) # 턴 change
+                self.drawn_lines.remove(move) # 임시로 그은거 지움
+                best_value = max(best_value,value) # 지금까지 최대 
+                alpha = max(alpha,best_value) # alpha prunning
+                if beta <= alpha:
+                    break
+            return best_value
+        else: #Minimizing turn (opponent's turn)
+            best_value = math.inf
+            for move in self.valid_move():
+                self.drawn_lines.append(move)
+                value= self.min_max(depth-1,alpha,beta,True)
+                self.drawn_lines.remove(move)
+                best_value = min(best_value,value)
+                beta = min(beta,best_value) # beta prunning
+                if beta <= alpha:
+                    break
+            return best_value
+    
+    def find_best_selection(self): # depth 3 = 50초(1턴) 25초 (2턴) 14초(3턴), depth 4 = 9분쯤
+        best_value = -math.inf
+        best_selection = None
+        alpha = -math.inf
+        beta = math.inf
+        best_score = -math.inf 
+        for move in self.valid_move():
+            self.drawn_lines.append(move)
+            value = self.min_max(3, alpha, beta, False) # False: opponent's turn
+            self.drawn_lines.remove(move)
+
+            if value > best_value: # best move 정하기
+                best_value = value
+                best_selection = move
+                alpha = max(alpha,best_value)
+            
+        return best_selection
+        
     def check_availability(self, line):
         line_string = LineString(line)
 
@@ -58,5 +107,3 @@ class MACHINE():
             return True
         else:
             return False    
-
-    

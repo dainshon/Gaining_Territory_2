@@ -2,6 +2,10 @@ import random
 from itertools import combinations
 from shapely.geometry import LineString, Point
 
+from itertools import product, chain, combinations
+from shapely.geometry import LineString, Point, Polygon
+import math
+
 class MACHINE():
     """
         [ MACHINE ]
@@ -23,10 +27,68 @@ class MACHINE():
         self.whole_points = []
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
+        #print("machine_drawn-ines:", self.drawn_lines)
+        #system = SYSTEM()
 
+# best selection 고치면될듯
     def find_best_selection(self):
+        # 가능한 선분들
         available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
-        return random.choice(available)
+
+        max_distance = 0 # 가장 멀리 그을 수 있는거 (단독/연결 고려 X)
+        max_index = 0  # 이때의 index
+        max_disconnected_index = -1  # 아무것도 연결 안되어있는것중에 긴 선분의 index
+
+        # 삼각형 2개 동시코드 짜야됨
+
+        # 삼각형 만들 수 있으면 바로 만들기 (안에 점있는거 처리 X)
+        for i in range(len(available)):
+            line = available[i]
+            
+        # 1. 삼각형 만들 수 있으면 바로 ㄱ
+            if(self.check_triangle(line)):
+                return line
+        # 2. 가장 길게 그을 수 있는거
+            distance = math.sqrt((line[0][0]-line[1][0])**2 + (line[0][1]-line[1][1])**2)
+            if(max_distance<distance):
+                max_distance = distance
+                max_index = i
+            
+        # 만들 수 있는 삼각형 없으면 제일 먼줄로 긋기
+        return available[max_index]
+
+        #return random.choice(available)
+    
+    def check_triangle(self, line):
+        self.get_score = False
+
+        point1 = line[0]
+        point2 = line[1]
+        #print("point 1, poitn2 : ", point1, point2)
+
+        point1_connected = []
+        point2_connected = []
+
+        for l in self.drawn_lines:
+            #print('l: ', l)
+            if l==line: # 자기 자신 제외
+                continue
+            if point1 in l:
+                point1_connected.append(l)
+            if point2 in l:
+                point2_connected.append(l)
+
+        if point1_connected and point2_connected: # 최소한 2점 모두 다른 선분과 연결되어 있어야 함
+            # product는 모든 조합 구해줌
+            for line1, line2 in product(point1_connected, point2_connected):
+                #print("line1 line2: ", line1, line2)
+                if(line1[0] in line2 or line1[1] in line2):
+                    print("3개의 선: ", line, line1, line2)
+                    return True
+        return False
+        # 한수앞을 보자
+
+        #  여기까지는 안에 점있는거 처리 못함
     
     def check_availability(self, line):
         line_string = LineString(line)
@@ -59,4 +121,4 @@ class MACHINE():
         else:
             return False    
 
-    
+        

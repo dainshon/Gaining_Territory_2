@@ -34,45 +34,101 @@ class MACHINE():
     def find_best_selection(self):
         # 가능한 선분들
         available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
-
+        print(available)
         max_distance = 0 # 가장 멀리 그을 수 있는거 (단독/연결 고려 X)
         max_index = 0  # 이때의 index
         max_disconnected_index = -1  # 아무것도 연결 안되어있는것중에 긴 선분의 index
+        index_distance_dict = {}
 
-        # 삼각형 2개 동시코드 짜야됨
-
-        # 삼각형 만들 수 있으면 바로 만들기 (안에 점있는거 처리 X)
         for i in range(len(available)):
             line = available[i]
+
+        # 0. 사각형 반가르는거면 ㄱㄱㄱㄱ0순위
+            if(self.check_rectangle(line)):
+                # 무조건 ㄱㄱ
+                return line
             
         # 1. 삼각형 만들 수 있으면 바로 ㄱ
             if(self.check_triangle(line)):
+                # self.if_dot_in()   # 삼각형 만들었을떄 안에 점 있는지
                 return line
         # 2. 가장 길게 그을 수 있는거
             distance = math.sqrt((line[0][0]-line[1][0])**2 + (line[0][1]-line[1][1])**2)
             if(max_distance<distance):
                 max_distance = distance
                 max_index = i
-            
+
+            # index_distance 정보 저장
+            index_distance_dict[i] = distance
+        
+        # distance기준으로 내림차순 정렬
+        index_distance_dict = dict(sorted(index_distance_dict.items(), key=lambda item: item[1], reverse=True))
+
+
+        # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
+        # 한 수 앞 예측
+        for idd in index_distance_dict:
+            if(self.see_next_turn(available[idd], available)):
+                return available[idd]
+
         # 만들 수 있는 삼각형 없으면 제일 먼줄로 긋기
         return available[max_index]
 
         #return random.choice(available)
     
-    def check_triangle(self, line):
-        self.get_score = False
-
+    def see_next_turn(self, line, available):
         point1 = line[0]
         point2 = line[1]
-        #print("point 1, poitn2 : ", point1, point2)
+        for l in self.drawn_lines:
+            if(point1 in l):
+                idx = abs(l.index(point1)-1)  # idx를 0or1로 바꾸고 
+                point0 = l[idx]
+                for al in available:
+                    if(point0 in al and point2 in al): # 상대가 삼각형 만들 수 있음(하나라도 존재하면 안됨)
+                        # 안에 점 존재 -> continue(그어도됨)
+                        # 안에 점 없음 -> False(안됨)
+                        return False
+            if(point2 in l):
+                idx = abs(l.index(point2)-1)  # idx를 0or1로 바꾸고 
+                point0 = l[idx]
+                for al in available:
+                    if(point0 in al and point1 in al): # 상대가 삼각형 만들 수 있음
+                        # 안에 점 존재 -> continue(그어도됨)
+                        # 안에 점 없음 -> False(안됨)
+                        return False
+        print("다음수에 상대가 할 거 없음!")           
+        return True  # t상대가 만들 수 있는 삼각형이 없음 -> 그어도됨
+        
+    def check_rectangle(self, line):
+        point1 = line[0]
+        point2 = line[1]
 
         point1_connected = []
         point2_connected = []
 
         for l in self.drawn_lines:
-            #print('l: ', l)
-            if l==line: # 자기 자신 제외
-                continue
+            if(point1 in l):
+                point1_connected.append(l)
+            if point2 in l:
+                point2_connected.append(l)
+        if(len(point1_connected)>=2 and len(point2_connected)>=2):
+            for line1, line2 in product(point1_connected, point2_connected):
+                if((line1[0] in line2 or line1[1] in line2) and (line2[0] in line1 or line2[1] in line1)):
+                    return True
+        return False
+
+
+
+
+    
+    def check_triangle(self, line):
+        point1 = line[0]
+        point2 = line[1]
+
+        point1_connected = []
+        point2_connected = []
+
+        for l in self.drawn_lines:
             if point1 in l:
                 point1_connected.append(l)
             if point2 in l:

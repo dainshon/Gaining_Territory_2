@@ -27,12 +27,12 @@ class MACHINE():
         self.whole_points = []
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
-        #print("machine_drawn-ines:", self.drawn_lines)
-        #system = SYSTEM()
+
 
 # best selection 고치면될듯
     def find_best_selection(self):
         # 가능한 선분들
+
         available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
         print(available)
         max_distance = 0 # 가장 멀리 그을 수 있는거 (단독/연결 고려 X)
@@ -40,18 +40,22 @@ class MACHINE():
         max_disconnected_index = -1  # 아무것도 연결 안되어있는것중에 긴 선분의 index
         index_distance_dict = {}
 
-        for i in range(len(available)):
-            line = available[i]
 
         # 0. 사각형 반가르는거면 ㄱㄱㄱㄱ0순위
+        for i in range(len(available)):
+            line = available[i]
             if(self.check_rectangle(line)):
                 # 무조건 ㄱㄱ
                 return line
-            
-        # 1. 삼각형 만들 수 있으면 바로 ㄱ
+
+        # 1. 삼각형 만들 수 있으면 바로 ㄱ  
+        for i in range(len(available)):
+            line = available[i]
+
             if(self.check_triangle(line)):
-                # self.if_dot_in()   # 삼각형 만들었을떄 안에 점 있는지
                 return line
+            
+
         # 2. 가장 길게 그을 수 있는거
             distance = math.sqrt((line[0][0]-line[1][0])**2 + (line[0][1]-line[1][1])**2)
             if(max_distance<distance):
@@ -65,16 +69,16 @@ class MACHINE():
         index_distance_dict = dict(sorted(index_distance_dict.items(), key=lambda item: item[1], reverse=True))
 
 
+
         # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
-        # 한 수 앞 예측
+        # 3. 한 수 앞 예측
         for idd in index_distance_dict:
             if(self.see_next_turn(available[idd], available)):
                 return available[idd]
 
-        # 만들 수 있는 삼각형 없으면 제일 먼줄로 긋기
+        # 4. 만들 수 있는 삼각형 없으면 제일 먼줄로 긋기
         return available[max_index]
-
-        #return random.choice(available)
+    
     
     def see_next_turn(self, line, available):
         point1 = line[0]
@@ -85,6 +89,7 @@ class MACHINE():
                 point0 = l[idx]
                 for al in available:
                     if(point0 in al and point2 in al): # 상대가 삼각형 만들 수 있음(하나라도 존재하면 안됨)
+
                         # 안에 점 존재 -> continue(그어도됨)
                         # 안에 점 없음 -> False(안됨)
                         return False
@@ -93,6 +98,7 @@ class MACHINE():
                 point0 = l[idx]
                 for al in available:
                     if(point0 in al and point1 in al): # 상대가 삼각형 만들 수 있음
+                        
                         # 안에 점 존재 -> continue(그어도됨)
                         # 안에 점 없음 -> False(안됨)
                         return False
@@ -138,13 +144,28 @@ class MACHINE():
             # product는 모든 조합 구해줌
             for line1, line2 in product(point1_connected, point2_connected):
                 #print("line1 line2: ", line1, line2)
-                if(line1[0] in line2 or line1[1] in line2):
+                if(line1[0] in line2):                 
+                    if(self.check_pointIntri(point1, point2, line1[0])):
+                        return True
+                if(line1[1] in line2):
                     print("3개의 선: ", line, line1, line2)
-                    return True
+                    if(self.check_pointIntri(point1, point2, line1[1])):
+                        return True
         return False
         # 한수앞을 보자
 
-        #  여기까지는 안에 점있는거 처리 못함
+
+    #삼각형 내부의 점 체크
+    def check_pointIntri(self, tripoint1, tripoint2, tripoint3):
+        triangle = Polygon([tripoint1, tripoint2, tripoint3])
+        for point in self.whole_points:
+            p = Point(point)
+            if(p == tripoint1 or p == tripoint2 or p == tripoint3):
+                continue
+            else:
+                if p.within(triangle):
+                    return False
+        return True
     
     def check_availability(self, line):
         line_string = LineString(line)

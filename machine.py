@@ -68,8 +68,6 @@ class MACHINE():
         # distance기준으로 내림차순 정렬
         index_distance_dict = dict(sorted(index_distance_dict.items(), key=lambda item: item[1], reverse=True))
 
-
-
         # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
         # 3. 한 수 앞 예측
         for idd in index_distance_dict:

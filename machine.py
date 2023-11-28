@@ -105,6 +105,7 @@ class MACHINE():
         print("다음수에 상대가 할 거 없음!")           
         return True  # t상대가 만들 수 있는 삼각형이 없음 -> 그어도됨
         
+    # 사각형 찾기
     def check_rectangle(self, line):
         point1 = line[0]
         point2 = line[1]
@@ -120,13 +121,23 @@ class MACHINE():
         if(len(point1_connected)>=2 and len(point2_connected)>=2):
             for line1, line2 in product(point1_connected, point2_connected):
                 if((line1[0] in line2 or line1[1] in line2) and (line2[0] in line1 or line2[1] in line1)):
-                    return True
+                    if(line1[0] in line2):
+                        point0 = line1[0]
+                    else:
+                        point0 = line1[1]
+                    if(line2[0] in line2):
+                        point00 = line2[0]
+                    else:
+                        point00 = line2[1]
+
+                    if((self.check_pointIntri(point1, point2, point0)) and (self.check_pointIntri(point1, point2, point00))):
+                        return True
         return False
 
 
 
 
-    
+    # 삼각형 찾기
     def check_triangle(self, line):
         point1 = line[0]
         point2 = line[1]

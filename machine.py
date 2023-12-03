@@ -25,95 +25,143 @@ class MACHINE():
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
         self.num_turns = 0
+        self.limit = 0
+        self.num_turns = 0
+        self.drawn_lines_with_turns = [] # 선과 그어진 턴도 같이 저장
+
+        self.available_line_triangle = []
+        
     
+    def draw_line(self, line_coords, turn):
+        self.drawn_lines.append(line_coords)
+        self.drawn_lines_with_turns.append((line_coords, turn))
+
     def increment_turn(self):
         self.num_turns += 1 
+
+    def set_num_from_dots(self):
+        self.num_dots = len(self.whole_points)
+
+        if self.num_dots <= 15:
+            self.limit = 15
+        else:
+            self.limit = 20
     
     def valid_move(self):
         return [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
 
     
-    def count_triangles_now (self, turn):
-        triangles_count = sum(1 for triangle in self.triangles if turn in triangle)
+    def update_triangles(self, drawn_line, current_turn):
+        # 선이 그어지면 삼각형 업데이트
+        triangles_completed = []
+        for triangle in self.triangles:
+            triangle_completed = True
+            for line in combinations(triangle, 2):
+                if (line, current_turn) not in self.drawn_lines_with_turns:
+                    triangle_completed = False
+                    break
+
+            if triangle_completed:
+                triangles_completed.append(triangle)
+
+        # 만들어진 턴과 함께 삼각형 저장
+        for triangle in triangles_completed:
+            self.triangles.remove(triangle)
+            self.triangles.append((triangle[0], triangle[1], drawn_line, current_turn))
+
+    def undo_move(self, line, current_turn):
+        if line in self.drawn_lines:  # line이 있는지 일단 확인(충돌 방지)
+            self.drawn_lines.remove(line)
+
+            # 시뮬레이션 끝나고 선 그은거 undo
+            for i, entry in enumerate(self.drawn_lines_with_turns):
+                if entry[0] == line and entry[1] == current_turn:
+                    del self.drawn_lines_with_turns[i]
+                    break 
+       
+
+    def undo_triangle(self, line, current_turn):
+        if line in self.drawn_lines:  # line이 있는지 일단 확인
+            self.drawn_lines.remove(line)
+            # 시뮬레이션 끝나고 undo
+            triangles_to_undo = []
+            for triangle in self.triangles:
+                if triangle[2] == line and triangle[3] == current_turn:
+                    triangles_to_undo.append(triangle)
+            for triangle in triangles_to_undo:
+                self.triangles.remove(triangle)
+                self.triangles.append((triangle[0], triangle[1]))
+        
+    
+    def count_triangles_now(self, turn):
+        triangles_count = 0
+        for triangle in self.triangles:
+            triangle_completed = True
+            for line in combinations(triangle, 2):
+                if (line, turn) not in self.drawn_lines_with_turns:
+                    triangle_completed = False
+                    break
+            
+            if triangle_completed:
+                triangles_count += 1
+        
         return triangles_count
     
     def heuristic_function(self):
         machine_triangles = self.count_triangles_now("MACHINE")
         user_triangles = self.count_triangles_now("USER")
-        heu_score = machine_triangles - user_triangles
-        return heu_score
+
+        return machine_triangles, user_triangles
     
-    def min_max(self, depth, alpha, beta, maximizing_value):
-        if depth == 0 or not self.valid_move():
-            print("끝까지 돌았을떄: ", self.heuristic_function())
-            return self.heuristic_function()
+
+    
+    def min_max(self, depth, alpha, beta, maximizing_player, current_turn):
         
-        if maximizing_value: # Maximizing turn (my turn)
+        if depth == 0 or not self.valid_move():
+            machine_heuristic, user_heuristic = self.heuristic_function()
+
+            if maximizing_player:  # Maximizer's turn (MACHINE)
+                return machine_heuristic
+            else:  # Minimizer's turn (USER)
+                return user_heuristic
+
+        if maximizing_player:  # Maximizer's turn (MACHINE)
             best_value = -math.inf
             for move in self.valid_move():
-                self.drawn_lines.append(move) # 임시로 그어봄
-                value = self.min_max(depth-1,alpha,beta,False) # 턴 change
-                self.drawn_lines.remove(move) # 임시로 그은거 지움
-                best_value = max(best_value,value) # 지금까지 최대 
-                alpha = max(alpha,best_value) # alpha prunning
+                self.draw_line(move, current_turn)  # Make a move
+                self.update_triangles(move, current_turn)
+                value = self.min_max(depth - 1, alpha, beta, False, 'USER')  # Switch to opponent's turn
+                self.undo_move(move, current_turn) 
+                self.undo_triangle(move, current_turn)
+                best_value = max(best_value, value)
+                alpha = max(alpha, best_value)
                 if beta <= alpha:
                     break
-            print("1에서 best_value: ", best_value)
             return best_value
-        else: #Minimizing turn (opponent's turn)
+        else:  # Minimizer's turn (USER)
             best_value = math.inf
             for move in self.valid_move():
-                self.drawn_lines.append(move)
-                value= self.min_max(depth-1,alpha,beta,True)
-                self.drawn_lines.remove(move)
-                best_value = min(best_value,value)
-                beta = min(beta,best_value) # beta prunning
-                if beta <= alpha:
-                    break
-            print("2에서 best_value: ", best_value)
-            return best_value
-        
-    def min_max_triangle(self, depth, alpha, beta, maximizing_value):
-        if depth == 0 or not self.valid_move():
-            print(self.heuristic_function())
-            return self.heuristic_function()
-        
-        if maximizing_value: # Maximizing turn (my turn)
-            best_value = -math.inf
-            for move in self.valid_move():
-                self.drawn_lines.append(move) # 임시로 그어봄
-                value = self.min_max(depth-1,alpha,beta,False) # 턴 change
-                self.drawn_lines.remove(move) # 임시로 그은거 지움
-                best_value = max(best_value,value) # 지금까지 최대 
-                alpha = max(alpha,best_value) # alpha prunning
-                if beta <= alpha:
-                    break
-            return best_value
-        else: #Minimizing turn (opponent's turn)
-            best_value = math.inf
-            for move in self.valid_move():
-                self.drawn_lines.append(move)
-                value= self.min_max(depth-1,alpha,beta,True)
-                self.drawn_lines.remove(move)
-                best_value = min(best_value,value)
-                beta = min(beta,best_value) # beta prunning
+                self.draw_line(move, current_turn)
+                self.update_triangles(move, current_turn)
+                value = self.min_max(depth - 1, alpha, beta, True, 'MACHINE')
+                self.undo_move(move, current_turn) 
+                self.undo_triangle(move, current_turn)
+                best_value = min(best_value, value)
+                beta = min(beta, best_value)
                 if beta <= alpha:
                     break
             return best_value
 
     
     def find_best_selection(self): # depth 3 = 50초(1턴) 25초 (2턴) 14초(3턴), depth 4 = 9분쯤
+        print("----------------------------")
         self.increment_turn()
-       
-       #available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
+        self.set_num_from_dots()
         available = self.valid_move()
         num_available_line = len(available)
         print("available 길이: ", num_available_line)
 
         available_line_triangle = []  # 삼각형 만들 수 있는 선 모음 
-
-       #if self.num_turns < 3 and num_available_line:
-                       #print("available 길이: ", len(available))
 
         max_distance = 0 # 가장 멀리 그을 수 있는거 (단독/연결 고려 X)
         max_index = 0  # 이때의 index
@@ -130,14 +178,11 @@ class MACHINE():
                     return line
             
             # 1. 삼각형 만들 수 있으면 바로 ㄱ  
-            # 여러 삼각형 만들 수 있을때는...?
             for i in range(len(available)):
                 line = available[i]
                 flag = 1
                 if(self.check_triangle(line)):
                     available_line_triangle.append(line)
-                
-                    #return line
 
                 # 2. 가장 길게 그을 수 있는거
                 distance = math.sqrt((line[0][0]-line[1][0])**2 + (line[0][1]-line[1][1])**2)
@@ -147,33 +192,35 @@ class MACHINE():
 
                 # index_distance 정보 저장
                 index_distance_dict[i] = distance
-            
+
+
             if(len(available_line_triangle)!=0):  # 삼각형 만들 수 있으면
+                print("삼각형은 있지만: ", available_line_triangle)
                 best_value = -math.inf
                 best_selection = None
                 alpha = -math.inf
                 beta = math.inf
                 best_score = -math.inf 
 
-                for line in available_line_triangle:
-                    self.drawn_lines.append(line)
-                    value = self.min_max_triangle(3, alpha, beta, False)
-                    self.drawn_lines.remove(line)
-
-                    if(value > best_value):
+                for move in available_line_triangle:
+                    self.drawn_lines.append(move)
+                    self.update_triangles(move, 'MACHINE')
+                    value = self.min_max(3, alpha, beta, True ,'MACHINE') # False: opponent's turn
+                    self.drawn_lines.remove(move)
+                    self.undo_triangle(move, 'MACHINE')
+                    if value > best_value: # best move 정하기
+                        best_value = value
                         best_selection = move
-                        alpha = max(alpha, best_value)
+                        alpha = max(alpha,best_value)
                 return best_selection
                         
                 # distance기준으로 내림차순 정렬
             index_distance_dict = dict(sorted(index_distance_dict.items(), key=lambda item: item[1], reverse=True))
         
 
-        # 사각형 만들 수 없다면 그때부터  rule/minmax 고민
-
-        flag = 0
-
-        if(num_available_line>20):
+        # 삼/사각형 만들 수 없다면 그때부터  rule/minmax 고민
+        print("self.limit: ", self.limit)
+        if(num_available_line>self.limit):
             # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
             # 3. 한 수 앞 예측
             for idd in index_distance_dict:
@@ -193,15 +240,14 @@ class MACHINE():
 
             for move in self.valid_move():
                 self.drawn_lines.append(move)
-                #value = self.min_max(num_available_line, alpha, beta, False)
-                value = self.min_max(3, alpha, beta, False) # False: opponent's turn
+                self.update_triangles(move, 'MACHINE')
+                value = self.min_max(3, alpha, beta, True ,'MACHINE') # False: opponent's turn
                 self.drawn_lines.remove(move)
-
+                self.undo_triangle(move, 'MACHINE')
                 if value > best_value: # best move 정하기
                     best_value = value
                     best_selection = move
                     alpha = max(alpha,best_value)
-                
             
 
             return best_selection

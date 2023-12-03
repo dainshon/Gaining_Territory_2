@@ -25,50 +25,119 @@ class MACHINE():
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
         self.num_turns = 0
+        self.drawn_lines_with_turns = []
+       
     
+    def draw_line(self, line_coords, turn):
+        self.drawn_lines.append(line_coords)
+        self.drawn_lines_with_turns.append((line_coords, turn))
+
     def increment_turn(self):
         self.num_turns += 1 
     
     def valid_move(self):
         return [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
 
-    
-    def count_triangles_now (self, turn):
-        triangles_count = sum(1 for triangle in self.triangles if turn in triangle)
+    def update_triangles(self, drawn_line, current_turn):
+        # Update triangles when a new line is drawn
+        triangles_completed = []
+        for triangle in self.triangles:
+            triangle_completed = True
+            for line in combinations(triangle, 2):
+                if (line, current_turn) not in self.drawn_lines_with_turns:
+                    triangle_completed = False
+                    break
+
+            if triangle_completed:
+                triangles_completed.append(triangle)
+
+        # Store the completed triangles with the turn they were made
+        for triangle in triangles_completed:
+            self.triangles.remove(triangle)
+            self.triangles.append((triangle[0], triangle[1], drawn_line, current_turn))
+
+    def undo_move(self, line, current_turn):
+        if line in self.drawn_lines:  # Check if the line exists before removing
+            self.drawn_lines.remove(line)
+
+            # Remove the corresponding entry from drawn_lines_with_turns
+            for i, entry in enumerate(self.drawn_lines_with_turns):
+                if entry[0] == line and entry[1] == current_turn:
+                    del self.drawn_lines_with_turns[i]
+                    break 
+       
+
+    def undo_triangle(self, line, current_turn):
+        if line in self.drawn_lines:  # Check if the line exists before removing
+            self.drawn_lines.remove(line)
+            # Undo changes in the triangles list for the last move made
+            triangles_to_undo = []
+            for triangle in self.triangles:
+                if triangle[2] == line and triangle[3] == current_turn:
+                    triangles_to_undo.append(triangle)
+            for triangle in triangles_to_undo:
+                self.triangles.remove(triangle)
+                self.triangles.append((triangle[0], triangle[1]))
+        
+
+    def count_triangles_now(self, turn):
+        triangles_count = 0
+        for triangle in self.triangles:
+            triangle_completed = True
+            for line in combinations(triangle, 2):
+                if (line, turn) not in self.drawn_lines_with_turns:
+                    triangle_completed = False
+                    break
+            
+            if triangle_completed:
+                triangles_count += 1
+        
         return triangles_count
     
     def heuristic_function(self):
         machine_triangles = self.count_triangles_now("MACHINE")
         user_triangles = self.count_triangles_now("USER")
-        heu_score = machine_triangles - user_triangles
-        return heu_score
+
+        return machine_triangles, user_triangles
+
     
-    def min_max(self, depth, alpha, beta, maximizing_value):
+    def min_max(self, depth, alpha, beta, maximizing_player, current_turn):
+        # Base case: if depth limit reached or terminal state
         if depth == 0 or not self.valid_move():
-            return self.heuristic_function()
-        
-        if maximizing_value: # Maximizing turn (my turn)
+            machine_heuristic, user_heuristic = self.heuristic_function()
+
+            if maximizing_player:  # Maximizer's turn (MACHINE)
+                return machine_heuristic
+            else:  # Minimizer's turn (USER)
+                return user_heuristic
+
+        if maximizing_player:  # Maximizer's turn (MACHINE)
             best_value = -math.inf
             for move in self.valid_move():
-                self.drawn_lines.append(move) # 임시로 그어봄
-                value = self.min_max(depth-1,alpha,beta,False) # 턴 change
-                self.drawn_lines.remove(move) # 임시로 그은거 지움
-                best_value = max(best_value,value) # 지금까지 최대 
-                alpha = max(alpha,best_value) # alpha prunning
+                self.draw_line(move, current_turn)  # Make a move
+                self.update_triangles(move, current_turn)
+                value = self.min_max(depth - 1, alpha, beta, False, 'USER')  # Switch to opponent's turn
+                self.undo_move(move, current_turn) 
+                self.undo_triangle(move, current_turn)
+                best_value = max(best_value, value)
+                alpha = max(alpha, best_value)
                 if beta <= alpha:
                     break
             return best_value
-        else: #Minimizing turn (opponent's turn)
+        else:  # Minimizer's turn (USER)
             best_value = math.inf
             for move in self.valid_move():
-                self.drawn_lines.append(move)
-                value= self.min_max(depth-1,alpha,beta,True)
-                self.drawn_lines.remove(move)
-                best_value = min(best_value,value)
-                beta = min(beta,best_value) # beta prunning
+                self.draw_line(move, current_turn)
+                self.update_triangles(move, current_turn)
+                value = self.min_max(depth - 1, alpha, beta, True, 'MACHINE')
+                self.undo_move(move, current_turn) 
+                self.undo_triangle(move, current_turn)
+                best_value = min(best_value, value)
+                beta = min(beta, best_value)
                 if beta <= alpha:
                     break
             return best_value
+
     
     def find_best_selection(self): # depth 3 = 50초(1턴) 25초 (2턴) 14초(3턴), depth 4 = 9분쯤
        self.increment_turn()
@@ -129,9 +198,10 @@ class MACHINE():
             best_score = -math.inf 
             for move in self.valid_move():
                 self.drawn_lines.append(move)
-                value = self.min_max(3, alpha, beta, False) # False: opponent's turn
+                self.update_triangles(move, 'MACHINE')
+                value = self.min_max(3, alpha, beta, True ,'MACHINE') # False: opponent's turn
                 self.drawn_lines.remove(move)
-
+                self.undo_triangle(move, 'MACHINE')
                 if value > best_value: # best move 정하기
                     best_value = value
                     best_selection = move

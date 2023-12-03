@@ -1,6 +1,8 @@
 import random
 import math
 from itertools import product, chain, combinations
+
+from _cffi_backend import string
 from shapely.geometry import LineString, Point, Polygon
 
 
@@ -27,6 +29,16 @@ class MACHINE():
         self.location = []
         self.triangles = []  # [(a, b), (c, d), (e, f)]
         self.num_turns = 0
+        self.limit = 0
+
+
+    def set_num_from_dots(self):
+        self.num_dots = len(self.whole_points)
+
+        if self.num_dots <= 15:
+            self.limit = 20
+        else:
+            self.limit = 30
 
     def increment_turn(self):
         self.num_turns += 1
@@ -74,7 +86,7 @@ class MACHINE():
 
     def find_best_selection(self):  # depth 3 = 50초(1턴) 25초 (2턴) 14초(3턴), depth 4 = 9분쯤
         self.increment_turn()
-
+        self.set_num_from_dots()
         # available = [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
         available = self.valid_move()
         num_available_line = len(available)
@@ -89,6 +101,7 @@ class MACHINE():
         index_distance_dict = {}
 
         if (num_available_line > 4):
+            print("hello"+str(num_available_line))
             # 0. 사각형 반가르는거면 ㄱㄱㄱㄱ0순위
             for i in range(len(available)):
                 line = available[i]
@@ -120,7 +133,7 @@ class MACHINE():
 
         flag = 0
 
-        if (num_available_line > 20):
+        if (num_available_line > self.limit):
 
             # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
             # 3. 한 수 앞 예측

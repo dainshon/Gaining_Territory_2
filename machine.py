@@ -45,6 +45,37 @@ class MACHINE():
     
     def min_max(self, depth, alpha, beta, maximizing_value):
         if depth == 0 or not self.valid_move():
+            print("끝까지 돌았을떄: ", self.heuristic_function())
+            return self.heuristic_function()
+        
+        if maximizing_value: # Maximizing turn (my turn)
+            best_value = -math.inf
+            for move in self.valid_move():
+                self.drawn_lines.append(move) # 임시로 그어봄
+                value = self.min_max(depth-1,alpha,beta,False) # 턴 change
+                self.drawn_lines.remove(move) # 임시로 그은거 지움
+                best_value = max(best_value,value) # 지금까지 최대 
+                alpha = max(alpha,best_value) # alpha prunning
+                if beta <= alpha:
+                    break
+            print("1에서 best_value: ", best_value)
+            return best_value
+        else: #Minimizing turn (opponent's turn)
+            best_value = math.inf
+            for move in self.valid_move():
+                self.drawn_lines.append(move)
+                value= self.min_max(depth-1,alpha,beta,True)
+                self.drawn_lines.remove(move)
+                best_value = min(best_value,value)
+                beta = min(beta,best_value) # beta prunning
+                if beta <= alpha:
+                    break
+            print("2에서 best_value: ", best_value)
+            return best_value
+        
+    def min_max_triangle(self, depth, alpha, beta, maximizing_value):
+        if depth == 0 or not self.valid_move():
+            print(self.heuristic_function())
             return self.heuristic_function()
         
         if maximizing_value: # Maximizing turn (my turn)
@@ -79,6 +110,8 @@ class MACHINE():
         num_available_line = len(available)
         print("available 길이: ", num_available_line)
 
+        available_line_triangle = []  # 삼각형 만들 수 있는 선 모음 
+
        #if self.num_turns < 3 and num_available_line:
                        #print("available 길이: ", len(available))
 
@@ -102,7 +135,9 @@ class MACHINE():
                 line = available[i]
                 flag = 1
                 if(self.check_triangle(line)):
-                    return line
+                    available_line_triangle.append(line)
+                
+                    #return line
 
                 # 2. 가장 길게 그을 수 있는거
                 distance = math.sqrt((line[0][0]-line[1][0])**2 + (line[0][1]-line[1][1])**2)
@@ -113,6 +148,23 @@ class MACHINE():
                 # index_distance 정보 저장
                 index_distance_dict[i] = distance
             
+            if(len(available_line_triangle)!=0):  # 삼각형 만들 수 있으면
+                best_value = -math.inf
+                best_selection = None
+                alpha = -math.inf
+                beta = math.inf
+                best_score = -math.inf 
+
+                for line in available_line_triangle:
+                    self.drawn_lines.append(line)
+                    value = self.min_max_triangle(3, alpha, beta, False)
+                    self.drawn_lines.remove(line)
+
+                    if(value > best_value):
+                        best_selection = move
+                        alpha = max(alpha, best_value)
+                return best_selection
+                        
                 # distance기준으로 내림차순 정렬
             index_distance_dict = dict(sorted(index_distance_dict.items(), key=lambda item: item[1], reverse=True))
         
@@ -122,7 +174,6 @@ class MACHINE():
         flag = 0
 
         if(num_available_line>20):
-
             # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
             # 3. 한 수 앞 예측
             for idd in index_distance_dict:

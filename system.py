@@ -276,6 +276,7 @@ class SYSTEM():
         self.machine.triangles = self.triangles
 
         line = self.machine.find_best_selection()
+        
         line = self.organize_points(line)
 
         if self.check_availability("MACHINE", line ):
@@ -318,6 +319,9 @@ class SYSTEM():
 
         # Must not cross another line
         condition3 = True
+
+        # 현재 그려진 전체 Line 의미
+        #print("drawn_lined: ", self.drawn_lines)
         for l in self.drawn_lines:
             if len(list(set([line[0], line[1], l[0], l[1]]))) == 3:
                 continue
@@ -345,6 +349,7 @@ class SYSTEM():
 
         point1 = line[0]
         point2 = line[1]
+        #print("point 1, poitn2 : ", point1, point2)
 
         point1_connected = []
         point2_connected = []
@@ -359,6 +364,7 @@ class SYSTEM():
 
         if point1_connected and point2_connected: # 최소한 2점 모두 다른 선분과 연결되어 있어야 함
             for line1, line2 in product(point1_connected, point2_connected):
+                print("point 1, poitn2 : ", point1, point2)
                 
                 # Check if it is a triangle & Skip the triangle has occupied
                 triangle = self.organize_points(list(set(chain(*[line, line1, line2]))))

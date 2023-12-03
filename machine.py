@@ -25,7 +25,7 @@ class MACHINE():
         self.location = []
         self.triangles = [] # [(a, b), (c, d), (e, f)]
         self.num_turns = 0
-        self.drawn_lines_with_turns = []
+        self.drawn_lines_with_turns = [] # 선과 그어진 턴도 같이 저장
        
     
     def draw_line(self, line_coords, turn):
@@ -39,7 +39,7 @@ class MACHINE():
         return [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
 
     def update_triangles(self, drawn_line, current_turn):
-        # Update triangles when a new line is drawn
+        # 선이 그어지면 삼각형 업데이트
         triangles_completed = []
         for triangle in self.triangles:
             triangle_completed = True
@@ -51,16 +51,16 @@ class MACHINE():
             if triangle_completed:
                 triangles_completed.append(triangle)
 
-        # Store the completed triangles with the turn they were made
+        # 만들어진 턴과 함께 삼각형 저장
         for triangle in triangles_completed:
             self.triangles.remove(triangle)
             self.triangles.append((triangle[0], triangle[1], drawn_line, current_turn))
 
     def undo_move(self, line, current_turn):
-        if line in self.drawn_lines:  # Check if the line exists before removing
+        if line in self.drawn_lines:  # line이 있는지 일단 확인(충돌 방지)
             self.drawn_lines.remove(line)
 
-            # Remove the corresponding entry from drawn_lines_with_turns
+            # 시뮬레이션 끝나고 선 그은거 undo
             for i, entry in enumerate(self.drawn_lines_with_turns):
                 if entry[0] == line and entry[1] == current_turn:
                     del self.drawn_lines_with_turns[i]
@@ -68,9 +68,9 @@ class MACHINE():
        
 
     def undo_triangle(self, line, current_turn):
-        if line in self.drawn_lines:  # Check if the line exists before removing
+        if line in self.drawn_lines:  # line이 있는지 일단 확인
             self.drawn_lines.remove(line)
-            # Undo changes in the triangles list for the last move made
+            # 시뮬레이션 끝나고 undo
             triangles_to_undo = []
             for triangle in self.triangles:
                 if triangle[2] == line and triangle[3] == current_turn:
@@ -79,7 +79,7 @@ class MACHINE():
                 self.triangles.remove(triangle)
                 self.triangles.append((triangle[0], triangle[1]))
         
-
+    
     def count_triangles_now(self, turn):
         triangles_count = 0
         for triangle in self.triangles:
@@ -102,7 +102,7 @@ class MACHINE():
 
     
     def min_max(self, depth, alpha, beta, maximizing_player, current_turn):
-        # Base case: if depth limit reached or terminal state
+        
         if depth == 0 or not self.valid_move():
             machine_heuristic, user_heuristic = self.heuristic_function()
 

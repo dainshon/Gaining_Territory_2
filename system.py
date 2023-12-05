@@ -345,6 +345,7 @@ class SYSTEM():
 
     # Score Checking Functions
     def check_triangle(self, line):
+        print("systempy의 checktriabgle")
         self.get_score = False
 
         point1 = line[0]
@@ -364,7 +365,7 @@ class SYSTEM():
 
         if point1_connected and point2_connected: # 최소한 2점 모두 다른 선분과 연결되어 있어야 함
             for line1, line2 in product(point1_connected, point2_connected):
-                print("point 1, poitn2 : ", point1, point2)
+
                 
                 # Check if it is a triangle & Skip the triangle has occupied
                 triangle = self.organize_points(list(set(chain(*[line, line1, line2]))))

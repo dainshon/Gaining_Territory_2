@@ -43,9 +43,9 @@ class MACHINE():
         self.num_dots = len(self.whole_points)
 
         if self.num_dots <= 15:
-            self.limit = 15
+            self.limit = 10
         else:
-            self.limit = 20
+            self.limit = 15
     
     def valid_move(self):
         return [[point1, point2] for (point1, point2) in list(combinations(self.whole_points, 2)) if self.check_availability([point1, point2])]
@@ -177,11 +177,12 @@ class MACHINE():
                     # 무조건 ㄱㄱ
                     return line
             
-            # 1. 삼각형 만들 수 있으면 바로 ㄱ  
+            # 1. 삼각형 만들 수 있으면 ㄱ  
             for i in range(len(available)):
                 line = available[i]
                 flag = 1
                 if(self.check_triangle(line)):
+                    print("추가!")
                     available_line_triangle.append(line)
 
                 # 2. 가장 길게 그을 수 있는거
@@ -193,7 +194,16 @@ class MACHINE():
                 # index_distance 정보 저장
                 index_distance_dict[i] = distance
 
+            print("가능한 삼각형: ", available_line_triangle)
+            total = len(available_line_triangle)*num_available_line
 
+            if(total > 150 or (len(available_line_triangle)>3 and total >100)):
+                print("너무 커서 안됨")
+                return available_line_triangle[0]
+            
+            if(len(available_line_triangle)==1):
+                return available_line_triangle[0]
+            
             if(len(available_line_triangle)!=0):  # 삼각형 만들 수 있으면
                 print("삼각형은 있지만: ", available_line_triangle)
                 best_value = -math.inf
@@ -219,7 +229,6 @@ class MACHINE():
         
 
         # 삼/사각형 만들 수 없다면 그때부터  rule/minmax 고민
-        print("self.limit: ", self.limit)
         if(num_available_line>self.limit):
             # 길게 그을 수 있는 순으로 상대에게 기회 주지 않는 선 찾기
             # 3. 한 수 앞 예측
@@ -313,20 +322,23 @@ class MACHINE():
         return True  # t상대가 만들 수 있는 삼각형이 없음 -> 그어도됨
         
     def check_rectangle(self, line):
+        
         point1 = line[0]
         point2 = line[1]
 
         point1_connected = []
         point2_connected = []
 
+
         for l in self.drawn_lines:
             if(point1 in l):
                 point1_connected.append(l)
             if point2 in l:
                 point2_connected.append(l)
+        cnt = 0
         if(len(point1_connected)>=2 and len(point2_connected)>=2):
             for line1, line2 in product(point1_connected, point2_connected):
-                if((line1[0] in line2 or line1[1] in line2) and (line2[0] in line1 or line2[1] in line1)):
+                if((line1[0] in line2 or line1[1] in line2) ):
                     if(line1[0] in line2):
                         point0 = line1[0]
                     else:
@@ -337,11 +349,17 @@ class MACHINE():
                         point00 = line2[1]
 
                     if((self.check_pointIntri(point1, point2, point0)) and (self.check_pointIntri(point1, point2, point00))):
-                        return True
+                        print("check_rectangle")
+                        cnt+=1
+            if(cnt>=2):
+                return True
+                        #return True
+                #if(and (line2[0] in line1 or line2[1] in line1))
         return False
 
     
     def check_triangle(self, line):
+
         point1 = line[0]
         point2 = line[1]
 
